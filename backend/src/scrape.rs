@@ -2,69 +2,58 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use anyhow::Result;
 use geo::Coord;
-use osm_reader::{Element, NodeID};
+use osm_reader::NodeID;
 use utils::Tags;
 
 use crate::{Direction, FilterKind, Intersection, IntersectionID, MapModel, Road, RoadID, Router};
 
-pub fn scrape_osm(input_bytes: &[u8], study_area_name: Option<String>) -> Result<MapModel> {
-    info!("Parsing {} bytes of OSM data", input_bytes.len());
-    // This doesn't use osm2graph's helper, because it needs to scrape more things from OSM
-    let mut node_mapping = HashMap::new();
-    let mut highways = Vec::new();
-    let mut all_barriers: BTreeSet<NodeID> = BTreeSet::new();
-    osm_reader::parse(input_bytes, |elem| match elem {
-        Element::Node {
-            id, lon, lat, tags, ..
-        } => {
-            let pt = Coord { x: lon, y: lat };
-            node_mapping.insert(id, pt);
+struct ReadBarriers {
+    all_barriers: BTreeMap<NodeID, Coord>,
+    used_road_nodes: BTreeSet<NodeID>,
+}
 
-            // Tuning these by hand for a few known areas.
-            // https://wiki.openstreetmap.org/wiki/Key:barrier is proper reference.
-            if let Some(kind) = tags.get("barrier") {
-                // Bristol has many gates that don't seem as relevant
-                if kind != "gate" {
-                    all_barriers.insert(id);
-                }
-            }
-        }
-        Element::Way {
-            id,
-            mut node_ids,
-            tags,
-            ..
-        } => {
-            let tags = tags.into();
-            if is_road(&tags) {
-                // TODO This sometimes happens from Overpass?
-                let num = node_ids.len();
-                node_ids.retain(|n| node_mapping.contains_key(n));
-                if node_ids.len() != num {
-                    warn!("{id} refers to nodes outside the imported area");
-                }
-                if node_ids.len() >= 2 {
-                    highways.push(utils::osm2graph::Way { id, node_ids, tags });
-                }
-            }
-        }
-        Element::Relation { .. } => {}
-        Element::Bounds { .. } => {}
-    })?;
-
-    // There'll be many barrier nodes on non-driveable paths we don't consider roads. Filter for
-    // just those on things we consider roads.
-    let mut barrier_pts = Vec::new();
-    for way in &highways {
-        for node in &way.node_ids {
-            if all_barriers.contains(node) {
-                barrier_pts.push(node_mapping[node]);
+impl utils::osm2graph::OsmReader for ReadBarriers {
+    fn node(&mut self, id: NodeID, pt: Coord, tags: Tags) {
+        // Tuning these by hand for a few known areas.
+        // https://wiki.openstreetmap.org/wiki/Key:barrier is proper reference.
+        if let Some(kind) = tags.get("barrier") {
+            // Bristol has many gates that don't seem as relevant
+            if kind != "gate" {
+                self.all_barriers.insert(id, pt);
             }
         }
     }
 
-    info!("Splitting {} ways into edges", highways.len());
-    let graph = utils::osm2graph::Graph::from_scraped_osm(node_mapping, highways);
+    fn way(
+        &mut self,
+        _: osm_reader::WayID,
+        nodes: &Vec<NodeID>,
+        _: &HashMap<NodeID, Coord>,
+        tags: &Tags,
+    ) {
+        // Bit repetitive, but need to remember this to figure out which barriers are valid
+        if is_road(tags) {
+            self.used_road_nodes.extend(nodes.clone());
+        }
+    }
+}
+
+pub fn scrape_osm(input_bytes: &[u8], study_area_name: Option<String>) -> Result<MapModel> {
+    let mut barriers = ReadBarriers {
+        all_barriers: BTreeMap::new(),
+        used_road_nodes: BTreeSet::new(),
+    };
+    let graph = utils::osm2graph::Graph::new(input_bytes, is_road, &mut barriers)?;
+
+    // There'll be many barrier nodes on non-driveable paths we don't consider roads. Filter for
+    // just those on things we consider roads.
+    let mut barrier_pts = Vec::new();
+    for (node, pt) in barriers.all_barriers {
+        if barriers.used_road_nodes.contains(&node) {
+            barrier_pts.push(graph.mercator.pt_to_mercator(pt));
+        }
+    }
+
     // Copy all the fields
     let intersections: Vec<Intersection> = graph
         .intersections
@@ -92,9 +81,6 @@ pub fn scrape_osm(input_bytes: &[u8], study_area_name: Option<String>) -> Result
             tags: e.osm_tags,
         })
         .collect();
-    for coord in &mut barrier_pts {
-        *coord = graph.mercator.pt_to_mercator(*coord);
-    }
     info!("Finalizing the map model");
 
     let mut directions = BTreeMap::new();
