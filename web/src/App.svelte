@@ -16,7 +16,6 @@
   } from "svelte-maplibre";
   import { notNull } from "svelte-utils";
   import { Geocoder } from "svelte-utils/map";
-        import Layout from "./Layout.svelte";
   import {
     mapContents,
     sidebarContents,
@@ -27,6 +26,7 @@
   import DebugMode from "./DebugMode.svelte";
   import NeighbourhoodMode from "./edit/NeighbourhoodMode.svelte";
   import ImpactOneDestinationMode from "./ImpactOneDestinationMode.svelte";
+  import Layout from "./Layout.svelte";
   import NetworkMode from "./NetworkMode.svelte";
   import RouteMode from "./RouteMode.svelte";
   import SetBoundaryMode from "./SetBoundaryMode.svelte";
