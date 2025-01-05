@@ -16,8 +16,8 @@
   } from "svelte-maplibre";
   import { notNull } from "svelte-utils";
   import { Geocoder } from "svelte-utils/map";
+        import Layout from "./Layout.svelte";
   import {
-    Layout,
     mapContents,
     sidebarContents,
     topContents,
