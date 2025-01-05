@@ -17,6 +17,7 @@
     display: flex;
     flex-direction: column;
     height: 100vh; /* Full viewport height */
+    margin: 0;
   }
 
   .top {
