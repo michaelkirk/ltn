@@ -3,12 +3,16 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use anyhow::Result;
 use geo::{Coord, LineInterpolatePoint, LineString, Polygon};
 use osm_reader::{Element, NodeID};
+use petgraph::graphmap::UnGraphMap;
 use rstar::{primitives::GeomWithData, RTree};
-use utils::Tags;
+use utils::{
+    osm2graph::{EdgeID, Graph},
+    Tags,
+};
 
 use crate::{Direction, FilterKind, Intersection, IntersectionID, MapModel, Road, RoadID, Router};
 
-pub fn scrape_osm(
+pub fn create_from_osm(
     input_bytes: &[u8],
     boundary_wgs84: Polygon,
     study_area_name: Option<String>,
@@ -106,11 +110,14 @@ pub fn scrape_osm(
     }
 
     info!("Splitting {} ways into edges", highways.len());
-    let graph = utils::osm2graph::Graph::from_scraped_osm(node_mapping, highways);
+    let mut graph = utils::osm2graph::Graph::from_scraped_osm(node_mapping, highways);
+    remove_disconnected_components(&mut graph);
+    graph.compact_ids();
+
     // Copy all the fields
     let intersections: Vec<Intersection> = graph
         .intersections
-        .into_iter()
+        .into_values()
         .map(|i| Intersection {
             id: IntersectionID(i.id.0),
             point: i.point,
@@ -122,7 +129,7 @@ pub fn scrape_osm(
     // Add in a bit
     let roads: Vec<Road> = graph
         .edges
-        .into_iter()
+        .into_values()
         .map(|e| Road {
             id: RoadID(e.id.0),
             src_i: IntersectionID(e.src.0),
@@ -320,4 +327,38 @@ fn parse_maxspeed_mph(tags: &Tags) -> Option<f64> {
         return Some(mph);
     }
     None
+}
+
+// TODO Consider upstreaming to osm2graph
+fn remove_disconnected_components(graph: &mut Graph) {
+    let mut scc_graph: UnGraphMap<utils::osm2graph::IntersectionID, EdgeID> = UnGraphMap::new();
+    for edge in graph.edges.values() {
+        scc_graph.add_edge(edge.src, edge.dst, edge.id);
+    }
+
+    let mut components: Vec<BTreeSet<EdgeID>> = Vec::new();
+    for nodes in petgraph::algo::kosaraju_scc(&scc_graph) {
+        components.push(nodes_to_edges(graph, nodes));
+    }
+    components.sort_by_key(|scc| scc.len());
+    components.reverse();
+
+    let mut remove_edges = BTreeSet::new();
+    // Keep only the largest component
+    for scc in components.into_iter().skip(1) {
+        info!("Removing component with only {} roads", scc.len());
+        remove_edges.extend(scc);
+    }
+
+    info!("Removing {} disconnected roads", remove_edges.len());
+    graph.remove_edges(remove_edges);
+}
+
+// Note this only works for connected components of nodes!
+fn nodes_to_edges(graph: &Graph, nodes: Vec<utils::osm2graph::IntersectionID>) -> BTreeSet<EdgeID> {
+    let mut edges = BTreeSet::new();
+    for i in nodes {
+        edges.extend(graph.intersections[&i].edges.clone());
+    }
+    edges
 }
