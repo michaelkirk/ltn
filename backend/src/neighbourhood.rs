@@ -44,6 +44,7 @@ impl Neighbourhood {
         boundary_polygon: Polygon,
         edit_perimeter_roads: bool,
     ) -> Result<Self> {
+        use wkt::ToWkt;
         let t1 = Instant::now();
         let bbox = buffer_aabb(aabb(&boundary_polygon), 50.0);
 
@@ -51,10 +52,20 @@ impl Neighbourhood {
 
         let mut interior_roads = BTreeSet::new();
         let mut crosses = BTreeMap::new();
+        info!(
+            "polygon: {polygon}",
+            polygon = boundary_polygon.wkt_string()
+        );
         for obj in map.closest_road.locate_in_envelope_intersecting(&bbox) {
             let r = &map.roads[obj.data.0];
-
-            match line_in_polygon(&r.linestring, &boundary_polygon, &prepared_boundary) {
+            let result = line_in_polygon(&r.linestring, &boundary_polygon, &prepared_boundary);
+            info!(
+                "linestring {road_id}: {linestring}, way: {way_id}, result: {result:?}",
+                road_id = obj.data,
+                way_id = r.way,
+                linestring = r.linestring.wkt_string()
+            );
+            match result {
                 LineInPolygon::Inside => {
                     interior_roads.insert(r.id);
                 }

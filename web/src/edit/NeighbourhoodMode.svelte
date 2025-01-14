@@ -85,6 +85,7 @@
   }
 
   function onClickLine(f: Feature, pt: LngLat) {
+    console.log("clicked line", f);
     if (action == "filter") {
       $backend!.addModalFilter(pt, $filterType);
       $mutationCounter++;
@@ -93,6 +94,36 @@
       $mutationCounter++;
     }
   }
+
+  function geojsonToWkt(geometry) {
+    const type = geometry.type.toUpperCase();
+    const coordinates = geometry.coordinates;
+
+    // Recursively handle nested coordinates
+    const formatCoordinates = (coords) => {
+        if (Array.isArray(coords[0])) {
+            return coords.map(formatCoordinates).join(', ');
+        }
+        return coords.join(' ');
+    };
+
+    if (type === 'POINT') {
+        return `POINT (${coordinates.join(' ')})`;
+    } else if (type === 'LINESTRING') {
+        return `LINESTRING (${formatCoordinates(coordinates)})`;
+    } else if (type === 'POLYGON') {
+        return `POLYGON ((${formatCoordinates(coordinates[0])}))`;
+    } else if (type === 'MULTIPOINT') {
+        return `MULTIPOINT (${formatCoordinates(coordinates)})`;
+    } else if (type === 'MULTILINESTRING') {
+        return `MULTILINESTRING (${coordinates.map(formatCoordinates).join(', ')})`;
+    } else if (type === 'MULTIPOLYGON') {
+        return `MULTIPOLYGON (${coordinates.map(rings => `((${formatCoordinates(rings[0])}))`).join(', ')})`;
+    } else {
+        console.error(`Unsupported geometry type: ${type}`);
+        return null;
+    }
+}
 
   function deleteFilter(e: CustomEvent<LayerClickInfo>) {
     let f = e.detail.features[0];
