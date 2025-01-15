@@ -1,0 +1,20 @@
+{
+  "type": "Feature",
+  "properties": {
+    "name": "Example Polygon",
+    "category": "park",
+    "description": "A polygon representing a park area."
+  },
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [102.0, 2.0],
+        [103.0, 2.0],
+        [103.0, 3.0],
+        [102.0, 3.0],
+        [102.0, 2.0]
+      ]
+    ]
+  }
+}
