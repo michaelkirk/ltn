@@ -1,10 +1,15 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { Loading } from "svelte-utils";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import deleteIcon from "../../assets/delete.svg?url";
   import editIcon from "../../assets/edit.svg?url";
+  import CNTMapProjectPicker from "../cnt/CNTMapProjectPicker.svelte";
+  import CNTProjectPicker from "../cnt/CNTProjectPicker.svelte";
+  import { CNTStudyAreas, type CNTStudyAreaKind } from "../cnt/CNTStudyAreas";
   import { Link } from "../common";
   import { routeTool } from "../common/draw_area/stores";
+  import FocusSelector, { type AppFocus } from "../common/FocusSelector.svelte";
   import { backend, map, mode, projectName } from "../stores";
   import { loadFromLocalStorage } from "./loader";
 
@@ -12,6 +17,13 @@
   export let firstLoad: boolean;
 
   let loading = "";
+  let selectedFocus: AppFocus = "global";
+  let cntStudyAreas = new CNTStudyAreas();
+  let cntStudyAreaKind: CNTStudyAreaKind = "LAD";
+
+  onMount(async () => {
+    await cntStudyAreas.load();
+  });
 
   // When other modes reset here, they can't clear state without a race condition
   {
@@ -117,48 +129,76 @@
       </ul>
     </nav>
   </div>
-  <div slot="sidebar">
+  <div slot="sidebar" class="title-mode-sidebar-{selectedFocus}">
     {#if $map && wasmReady}
-      <div>
-        <Link on:click={() => ($mode = { mode: "new-project" })}>
-          New project
-        </Link>
-      </div>
+      <FocusSelector bind:selectedFocus />
+      {#if selectedFocus == "global"}
+        <div>
+          <Link on:click={() => ($mode = { mode: "new-project" })}>
+            New project
+          </Link>
+        </div>
 
-      <p>Load a saved project:</p>
-      <ul>
-        {#each projectList as [study_area_name, projects]}
-          <u>{study_area_name ?? "custom area"}</u>
-          {#each projects as project}
-            <li>
-              <span style="display: flex; justify-content: space-between;">
-                <Link on:click={() => loadProject(project)}>
-                  {project.slice("ltn_".length)}
-                </Link>
-                <button
-                  class="secondary"
-                  on:click={() => renameProject(project)}
-                >
-                  <img src={editIcon} alt="Rename project" />
-                </button>
-                <button
-                  class="secondary"
-                  on:click={() => deleteProject(project)}
-                >
-                  <img src={deleteIcon} alt="Delete project" />
-                </button>
-              </span>
-            </li>
+        <p>Load a saved project:</p>
+        <ul>
+          {#each projectList as [study_area_name, projects]}
+            <u>{study_area_name ?? "custom area"}</u>
+            {#each projects as project}
+              <li>
+                <span style="display: flex; justify-content: space-between;">
+                  <Link on:click={() => loadProject(project)}>
+                    {project.slice("ltn_".length)}
+                  </Link>
+                  <button
+                    class="secondary"
+                    on:click={() => renameProject(project)}
+                  >
+                    <img src={editIcon} alt="Rename project" />
+                  </button>
+                  <button
+                    class="secondary"
+                    on:click={() => deleteProject(project)}
+                  >
+                    <img src={deleteIcon} alt="Delete project" />
+                  </button>
+                </span>
+              </li>
+            {/each}
           {/each}
-        {/each}
-      </ul>
+        </ul>
 
-      <label>
-        Load a project from a file
-        <input bind:this={fileInput} on:change={loadFile} type="file" />
-      </label>
+        <label>
+          Load a project from a file
+          <input bind:this={fileInput} on:change={loadFile} type="file" />
+        </label>
+      {:else if selectedFocus == "cnt"}
+        <CNTProjectPicker
+          studyAreaKind={cntStudyAreaKind}
+          regionNames={cntStudyAreas.regionNames}
+          ladNames={cntStudyAreas.ladNames}
+        />
+      {/if}
     {:else}
       <p>Waiting for MapLibre and WASM to load...</p>
     {/if}
   </div>
+  <div slot="map" style="position: relative; width: 100%; height: 100%;">
+    {#if selectedFocus == "cnt"}
+      <CNTMapProjectPicker
+        studyAreaKind={cntStudyAreaKind}
+        gj={cntStudyAreas.gj}
+      />
+    {/if}
+  </div>
 </SplitComponent>
+
+<style>  
+  /* app specificity to override existing rule for .left  */
+  :global(#app .left):has(.title-mode-sidebar-cnt) {
+    width: 35%;
+  }                   
+  /* app specificity to override existing rule for .left  */
+  :global(#app .main):has(.title-mode-sidebar-cnt) {
+    width: 65%;
+  }
+</style>  
