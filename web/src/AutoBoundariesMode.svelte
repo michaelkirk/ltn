@@ -32,10 +32,10 @@
   import { PrioritizationSelect, type Prioritization } from "./prioritization";
   import {
     appFocus,
-    autosave,
     backend,
     mode,
     returnToChooseProject,
+    saveCurrentProject,
   } from "./stores";
   import type { GeneratedBoundaryFeature } from "./wasm";
 
@@ -102,7 +102,7 @@
         geometry: selectedBoundary.geometry,
       };
       $backend!.setNeighbourhoodBoundary(name, feature);
-      autosave();
+      saveCurrentProject();
       $backend!.setCurrentNeighbourhood(name);
       $mode = {
         mode: "neighbourhood",

@@ -29,12 +29,12 @@
   import { PrioritizationSelect, type Prioritization } from "./prioritization";
   import {
     appFocus,
-    autosave,
     backend,
     currentProjectKey,
     devMode,
     mode,
     returnToChooseProject,
+    saveCurrentProject,
   } from "./stores";
   import type { NeighbourhoodBoundaryFeature } from "./wasm";
 
@@ -58,7 +58,7 @@
       )
     ) {
       $backend!.deleteNeighbourhoodBoundary(name);
-      autosave();
+      saveCurrentProject();
       // TODO Improve perf, don't call this twice
       neighbourhoods = $backend!.getAllNeighbourhoods();
     }
@@ -72,7 +72,7 @@
     );
     if (newName) {
       $backend!.renameNeighbourhoodBoundary(name, newName);
-      autosave();
+      saveCurrentProject();
       neighbourhoods = $backend!.getAllNeighbourhoods();
     }
   }
