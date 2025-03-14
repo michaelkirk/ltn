@@ -30,9 +30,10 @@
   import {
     appFocus,
     backend,
-    currentProjectKey,
+    currentProjectID,
     devMode,
     mode,
+    projectStorage,
     returnToChooseProject,
     saveCurrentProject,
   } from "./stores";
@@ -89,10 +90,14 @@
   }
 
   function exportGJ() {
-    downloadGeneratedFile(
-      $currentProjectKey + ".geojson",
-      JSON.stringify($backend!.toSavefile()),
-    );
+    let projectID = $currentProjectID!;
+    let { projectSummary, features } = $projectStorage.getProject(projectID);
+    let dateFormatted = new Date().toISOString().split("T")[0];
+    let filename = `${projectSummary.projectName}-${dateFormatted}.geojson`;
+    // add summary as foreign member
+    let project = features as any;
+    project.projectSummary = projectSummary;
+    downloadGeneratedFile(filename, JSON.stringify(project));
   }
 
   function debugRouteSnapper() {
@@ -280,7 +285,7 @@
       <hr />
     {/if}
 
-    <p>Current project: {$currentProjectKey}</p>
+    <p>Current project: {$currentProjectID}</p>
 
     <p>
       {edits.modalFilters} new modal filter(s) added

@@ -11,7 +11,8 @@
   import { Popup } from "svelte-utils/map";
   import boundariesUrl from "../assets/cnt_boundaries.geojson?url";
   import { Link } from "./common";
-  import { projectStorage } from "./title/loader";
+  import { projectStorage } from "./stores";
+  import { loadProject } from "./title/loader";
 
   export let activityIndicatorText: string;
 
@@ -54,17 +55,17 @@
         return;
       }
       activityIndicatorText = `Loading pre-clipped OSM area ${studyAreaName}`;
-      created = await projectStorage.createNewProject(
-        "ltn_cnt",
-        studyAreaName,
-        projectName,
-      );
-      activityIndicatorText = "";
-      if (!created) {
-        window.alert(
-          `The project name ${projectName} is already used; please pick another`,
-        );
+      try {
+        let projectID = $projectStorage.createNewProject({
+          studyAreaName,
+          projectName,
+        });
+        await loadProject(projectID);
+        created = true;
+      } catch (e) {
+        window.alert(e);
       }
+      activityIndicatorText = "";
     }
   }
 </script>

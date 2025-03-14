@@ -3,10 +3,17 @@
   import { Loading } from "svelte-utils";
   import { SplitComponent } from "svelte-utils/top_bar_layout";
   import CntChooseArea from "../CntChooseArea.svelte";
-  import { Link } from "../common";
+  import { Link, type ProjectID } from "../common";
   import { routeTool } from "../common/draw_area/stores";
-  import { appFocus, backend, currentProjectKey, map, mode } from "../stores";
-  import { projectStorage } from "./loader";
+  import {
+    appFocus,
+    backend,
+    currentProjectID,
+    map,
+    mode,
+    projectStorage,
+  } from "../stores";
+  import { loadProject } from "./loader";
   import LoadSavedProject from "./LoadSavedProject.svelte";
 
   export let wasmReady: boolean;
@@ -18,13 +25,13 @@
   {
     $backend = null;
     $routeTool = null;
-    $currentProjectKey = "";
+    $currentProjectID = undefined;
 
     if (firstLoad) {
       let params = new URLSearchParams(window.location.search);
       let projectKey = params.get("project");
       if (projectKey) {
-        loadProjectPrompt(projectKey);
+        loadProjectFromURLParam(projectKey);
       }
     } else {
       // Update the URL
@@ -34,32 +41,60 @@
     }
   }
 
-  let projectList = projectStorage.listProjects($appFocus);
+  let projectList = $projectStorage.listProjects();
 
-  function deleteProjectPrompt(key: string) {
-    if (window.confirm(`Really delete project ${key}? You can't undo this.`)) {
-      projectStorage.removeProject(key);
-      projectList = projectStorage.listProjects($appFocus);
+  function deleteProjectPrompt(projectID: ProjectID, projectName: string) {
+    if (
+      window.confirm(
+        `Really delete project ${projectName}? You can't undo this.`,
+      )
+    ) {
+      $projectStorage.removeProject(projectID);
+      projectList = $projectStorage.listProjects();
     }
   }
 
-  function renameProjectPrompt(key: string) {
-    let newName = window.prompt(`Rename project ${key} to what?`, key);
+  function renameProjectPrompt(projectID: ProjectID, existingName: string) {
+    let newName = window.prompt(
+      `Rename project ${existingName} to what?`,
+      existingName,
+    );
     if (newName) {
-      // TODO Again, hide leading ltn_?
-      if (!newName.startsWith("ltn_")) {
-        newName = `ltn_${newName}`;
+      try {
+        $projectStorage.renameProject(projectID, newName);
+      } catch (e) {
+        window.alert(`Couldn't rename project: ${e}`);
       }
-
-      projectStorage.renameProject(key, newName);
-      projectList = projectStorage.listProjects($appFocus);
+      projectList = $projectStorage.listProjects();
     }
   }
 
-  async function loadProjectPrompt(key: string) {
-    loading = `Loading project ${key}`;
-    await projectStorage.loadProject(key);
+  async function loadProjectFromURLParam(projectIDParam: string) {
+    // TODO: verify it looks like a UUID
+    let projectID = projectIDParam as ProjectID;
+    let projectName = $projectStorage.projectName(projectID);
+    if (!projectName) {
+      console.error(`Project ${projectID} from URL not found`);
+      return;
+    }
+    loadProjectPrompt(projectID, projectName);
+  }
+
+  async function loadProjectPrompt(projectID: ProjectID, projectName: string) {
+    loading = `Loading project ${projectName}`;
+    await loadProject(projectID);
     loading = "";
+  }
+
+  function prettyPrintStudyAreaName(studyAreaName: string | undefined): string {
+    if (!studyAreaName) {
+      return "custom area";
+    }
+    if ($appFocus == "cnt") {
+      return studyAreaName.replace("LAD_", "");
+    } else {
+      return studyAreaName;
+    }
   }
 </script>
 
@@ -78,13 +113,17 @@
       {#if projectList.length > 0}
         <h2>Your projects</h2>
         <div class="project-list">
-          {#each projectList as [study_area_name, projects]}
-            <h3 class="study-area-name">{study_area_name ?? "custom area"}</h3>
+          {#each projectList as [studyAreaName, projects]}
+            <h3 class="study-area-name">
+              {prettyPrintStudyAreaName(studyAreaName)}
+            </h3>
             <ul class="navigable-list">
-              {#each projects as { projectId, projectName }}
+              {#each projects as { projectID, projectName }}
                 <li class="actionable-cell">
                   <h3>
-                    <Link on:click={() => loadProjectPrompt(projectId)}>
+                    <Link
+                      on:click={() => loadProjectPrompt(projectID, projectName)}
+                    >
                       {projectName}
                     </Link>
                   </h3>
@@ -92,14 +131,16 @@
                     <button
                       class="outline icon-btn"
                       aria-label="Rename project"
-                      on:click={() => renameProjectPrompt(projectId)}
+                      on:click={() =>
+                        renameProjectPrompt(projectID, projectName)}
                     >
                       <Pencil color="black" />
                     </button>
                     <button
                       class="icon-btn destructive"
                       aria-label="Delete project"
-                      on:click={() => deleteProjectPrompt(projectId)}
+                      on:click={() =>
+                        deleteProjectPrompt(projectID, projectName)}
                     >
                       <Trash2 color="white" />
                     </button>
