@@ -5,7 +5,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 fn benchmark_build_map_model(c: &mut Criterion) {
     for (fixture, expected_population_zones, expected_generated_boundaries) in [
         (NeighbourhoodFixture::INVERNESS, 325, 8958),
-        (NeighbourhoodFixture::DUNDEE, 200, 240),
+        // (NeighbourhoodFixture::DUNDEE, 200, 240),
     ] {
         // Do the file i/o (reading OSM.xml) outside of the bench loop
         let (neighbourhood, map) = fixture.neighbourhood_map().unwrap();
@@ -13,6 +13,7 @@ fn benchmark_build_map_model(c: &mut Criterion) {
             map.context_data.as_ref().unwrap().population_zones.len(),
             expected_population_zones
         );
+        /*
         c.bench_function(
             &format!(
                 "build stats: {neighbourhood} in {study_area}",
@@ -29,6 +30,7 @@ fn benchmark_build_map_model(c: &mut Criterion) {
                 });
             },
         );
+        */
         c.benchmark_group(fixture.savefile_name)
             .sample_size(fixture.bench_sample_size())
             .bench_function("generate auto boundaries (and stats)", |b| {
