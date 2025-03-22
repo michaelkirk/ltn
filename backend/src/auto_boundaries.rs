@@ -33,39 +33,28 @@ impl MapModel {
                 } else {
                     true
                 }
-            });
-        // .chain({
-        //     if let Some(context_data) = self.context_data.as_ref() {
-        //         // attempt to include settlment outskirts
-        //         //
-        //         // This kind of works, but not perfectly.
-        //         // Because the settlement boundary is a polygon, not an actual linestring, it doesn't play nice
-        //         // with the severance logic, and sometimes we see logically disjoint outskirts
-        //         // grouped into a single neighbourhood boundary.
-        //         let iter: Box<dyn Iterator<Item = &LineString>> = Box::new(
-        //             context_data
-        //                 .settlements
-        //                 .geometry()
-        //                 .0
-        //                 .iter()
-        //                 .map(|poly| poly.exterior()),
-        //         );
-        //         iter
-        //     } else {
-        //         Box::new(std::iter::empty())
-        //     }
-        // });
-
-        let mut settlement_boundary_severences = vec![];
-        if let Some(context_data) = self.context_data.as_ref() {
-            for polygon in context_data.settlements.geometry() {
-                let splits = split_polygon(polygon, severances.clone());
-                for exterior in splits.into_iter().map(|poly| poly.into_inner().0) {
-                    settlement_boundary_severences.push(exterior);
+            })
+            .chain({
+                if let Some(context_data) = self.context_data.as_ref() {
+                    // attempt to include settlment outskirts
+                    //
+                    // This kind of works, but not perfectly.
+                    // Because the settlement boundary is a polygon, not an actual linestring, it doesn't play nice
+                    // with the severance logic, and sometimes we see logically disjoint outskirts
+                    // grouped into a single neighbourhood boundary.
+                    let iter: Box<dyn Iterator<Item = &LineString>> = Box::new(
+                        context_data
+                            .settlements
+                            .geometry()
+                            .0
+                            .iter()
+                            .map(|poly| poly.exterior()),
+                    );
+                    iter
+                } else {
+                    Box::new(std::iter::empty())
                 }
-            }
-        }
-        let severances = severances.chain(settlement_boundary_severences.iter());
+            });
 
         let boundary_mercator = self.mercator.to_mercator(&self.boundary_wgs84);
         let severance_rtree = RTree::bulk_load(severances.cloned().collect());
@@ -86,7 +75,7 @@ impl MapModel {
                 return vec![];
             };
             let severance_candidates = severance_rtree.locate_in_envelope_intersecting(&envelope);
-            split_polygon(&boundary_polygon, severance_candidates)
+            split_polygon(boundary_polygon, severance_candidates)
         }) {
             let area_km_2 = polygon.unsigned_area() / 1000. / 1000.;
 
@@ -185,7 +174,7 @@ impl GeneratedBoundary {
 
 // TODO Revisit some of this; conversions are now in geo
 fn split_polygon<'a>(
-    polygon: &Polygon,
+    polygon: Polygon,
     severances: impl Iterator<Item = &'a LineString>,
 ) -> Vec<Polygon> {
     let mut shape = to_i_overlay_contour(polygon.exterior());
