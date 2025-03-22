@@ -33,6 +33,27 @@ impl MapModel {
                 } else {
                     true
                 }
+            })
+            .chain({
+                if let Some(context_data) = self.context_data.as_ref() {
+                    // attempt to include settlment outskirts
+                    //
+                    // This kind of works, but not perfectly.
+                    // Because the settlement boundary is a polygon, not an actual linestring, it doesn't play nice
+                    // with the severance logic, and sometimes we see logically disjoint outskirts
+                    // grouped into a single neighbourhood boundary.
+                    let iter: Box<dyn Iterator<Item = &LineString>> = Box::new(
+                        context_data
+                            .settlements
+                            .geometry()
+                            .0
+                            .iter()
+                            .map(|poly| poly.exterior()),
+                    );
+                    iter
+                } else {
+                    Box::new(std::iter::empty())
+                }
             });
 
         let boundary_mercator = self.mercator.to_mercator(&self.boundary_wgs84);
