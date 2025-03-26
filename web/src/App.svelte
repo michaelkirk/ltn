@@ -1,4 +1,5 @@
 <script lang="ts">
+  import borderEntryArrorUrl from "../assets/arrow-big-up.png?url";
   import onewayArrowUrl from "../assets/arrow.png?url";
   import logo from "../assets/logo.svg?url";
   import nationalRailUrl from "../assets/national_rail.png?url";
@@ -202,6 +203,12 @@
             {
               id: "oneway_arrow",
               url: onewayArrowUrl,
+            },
+            {
+              // TODO: This file is copied from Lucide. Can we inline the svg data? Or better yet pull it directly from lucid?
+              id: "border_entry_arrow",
+              url: borderEntryArrorUrl,
+              options: { sdf: true },
             },
             {
               id: "national_rail",

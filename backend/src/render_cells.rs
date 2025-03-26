@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 
 use geo::{BooleanOps, BoundingRect, Coord, Densify, Euclidean, LineString, MultiPolygon, Rect};
+use serde::{Serialize, Serializer};
 use utils::{Grid, LineSplit};
 
 use crate::{Cell, IntersectionID, MapModel, Neighbourhood, RoadID};
@@ -8,10 +9,22 @@ use crate::{Cell, IntersectionID, MapModel, Neighbourhood, RoadID};
 const NUM_COLORS: usize = 10;
 const RESOLUTION_M: f64 = 10.0;
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum Color {
     Disconnected,
     Cell(usize),
+}
+
+impl Serialize for Color {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Color::Disconnected => "disconnected".serialize(serializer),
+            Color::Cell(idx) => idx.serialize(serializer),
+        }
+    }
 }
 
 impl Into<geojson::JsonValue> for Color {

@@ -184,17 +184,7 @@
         [fatalColor, seriousColor, slightColor],
       ),
       "circle-opacity": 0.9,
-      "circle-radius": [
-        "interpolate",
-        ["linear"],
-        ["zoom"],
-        1,
-        2,
-        8,
-        3,
-        13,
-        15,
-      ],
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 1, 13, 0.5],
       "circle-stroke-color": "black",
       "circle-stroke-width": 0.1,
     }}

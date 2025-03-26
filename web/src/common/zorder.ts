@@ -150,6 +150,8 @@ const layerZorder = [
   // These're outside the neighbourhood-boundary, but don't fade them
   "border-arrows",
   "border-arrow-outlines",
+  "border-entries-outline",
+  "border-entries",
 
   "freehand-line",
 
