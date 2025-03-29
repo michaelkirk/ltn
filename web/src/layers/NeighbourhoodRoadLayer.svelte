@@ -22,14 +22,8 @@
   export let neighbourhood: RenderNeighbourhoodOutput =
     $backend!.renderNeighbourhood();
   let gj = neighbourhood;
-  $: {
-    if ($mutationCounter > 0) {
-      console.log("updating neighbourhood roads layer gj");
-      gj = $backend!.renderNeighbourhood();
-    } else {
-      console.log("no mutations yet?");
-    }
-  }
+  $: gj =
+    $mutationCounter > 0 ? $backend!.renderNeighbourhood() : neighbourhood;
 
   // When disabled, can't click lines or filters, no slots, no hoverCursor
   export let interactive = true;

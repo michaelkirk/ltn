@@ -108,6 +108,7 @@
   });
 
   function rerender(_x: number) {
+    console.log("in rerender");
     gj = $backend!.renderNeighbourhood();
     // @ts-expect-error TS can't figure out that we're narrowing the case here
     boundary = gj.features.find((f) => f.properties.kind == "boundary")!;
