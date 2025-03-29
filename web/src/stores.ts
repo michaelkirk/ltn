@@ -12,7 +12,7 @@ import {
   ProjectStorage,
   type ProjectID,
 } from "./common/ProjectStorage";
-import type { Backend, RenderNeighbourhoodOutput } from "./wasm";
+import type { Backend } from "./wasm";
 
 // NOTE: our maptiler apiKey is baked into the customized assets/map-styles/, so if we rotate keys, we'll need to update that file too.
 export const maptilerApiKey = "MZEJTanw3WpxRvt7qDfo";
@@ -90,27 +90,6 @@ appFocus.subscribe((focus) => {
 export let showAbout: Writable<boolean> = writable(false);
 
 export let backend: Writable<Backend | null> = writable(null);
-export let neighbourhoodGj: Writable<RenderNeighbourhoodOutput | null> =
-  writable(null);
-
-currentProjectID.subscribe((projectID) => {
-  let b = get(backend);
-  if (b && projectID) {
-    neighbourhoodGj.set(b.renderNeighbourhood());
-  } else {
-    neighbourhoodGj.set(null);
-  }
-});
-
-backend.subscribe((b) => {
-  let projectID = get(currentProjectID);
-  if (b && projectID) {
-    neighbourhoodGj.set(b.renderNeighbourhood());
-  } else {
-    neighbourhoodGj.set(null);
-  }
-});
-
 export let routePtA: Writable<LngLat> = writable(new LngLat(0, 0));
 export let routePtB: Writable<LngLat> = writable(new LngLat(0, 0));
 export let oneDestination: Writable<LngLat> = writable(new LngLat(0, 0));

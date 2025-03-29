@@ -166,14 +166,10 @@ impl LTN {
 
     #[wasm_bindgen(js_name = renderNeighbourhood)]
     pub fn render_neighbourhood(&self) -> Result<String, JsValue> {
-        Ok(serde_json::to_string(
-            &self
-                .neighbourhood
-                .as_ref()
-                .expect("can't render neighbourhood before it's assigned")
-                .to_gj(&self.map),
+        Ok(
+            serde_json::to_string(&self.neighbourhood.as_ref().unwrap().to_gj(&self.map))
+                .map_err(err_to_js)?,
         )
-        .map_err(err_to_js)?)
     }
 
     #[wasm_bindgen(js_name = generatedBoundaries)]
