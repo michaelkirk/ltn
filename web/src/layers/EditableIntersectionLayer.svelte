@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { getContext } from "svelte";
   import { CircleLayer, hoverStateFilter, Popup } from "svelte-maplibre";
   import { layerId, mapMetersToPixels, Style } from "../common";
   import {
@@ -9,8 +8,7 @@
   import EditIntersectionPopup from "../edit/EditIntersectionPopup.svelte";
   import type { RenderNeighbourhoodOutput } from "../wasm";
 
-  export let neighbourhood: RenderNeighbourhoodOutput =
-    getContext("neighbourhoodGj");
+  export let neighbourhood: RenderNeighbourhoodOutput;
   export let onClickIntersection = (intersection: Intersection) => {};
   export let interactive: boolean = false;
 

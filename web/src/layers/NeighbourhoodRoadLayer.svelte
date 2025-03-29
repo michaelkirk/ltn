@@ -2,8 +2,7 @@
   // TODO: This should be called "EditableRoadLayer" or something, because it optionally includes the Perimeter (requires changes to backend as well)
   import type { Feature } from "geojson";
   import type { ExpressionSpecification, LngLat } from "maplibre-gl";
-  import { getContext } from "svelte";
-  import { hoverStateFilter, LineLayer } from "svelte-maplibre";
+  import { GeoJSON, hoverStateFilter, LineLayer } from "svelte-maplibre";
   import { makeRamp } from "svelte-utils/map";
   import { layerId, roadLineWidth } from "../common";
   import {
@@ -12,10 +11,25 @@
     speedLimits,
     Style,
   } from "../common/colors";
-  import { roadStyle, thickRoadsForShortcuts } from "../stores";
+  import {
+    backend,
+    mutationCounter,
+    roadStyle,
+    thickRoadsForShortcuts,
+  } from "../stores";
   import type { RenderNeighbourhoodOutput } from "../wasm";
 
-  let gj: RenderNeighbourhoodOutput = getContext("neighbourhoodGj");
+  export let neighbourhood: RenderNeighbourhoodOutput =
+    $backend!.renderNeighbourhood();
+  let gj = neighbourhood;
+  $: {
+    if ($mutationCounter > 0) {
+      console.log("updating neighbourhood roads layer gj");
+      gj = $backend!.renderNeighbourhood();
+    } else {
+      console.log("no mutations yet?");
+    }
+  }
 
   // When disabled, can't click lines or filters, no slots, no hoverCursor
   export let interactive = true;
@@ -86,69 +100,71 @@
   }
 </script>
 
-<LineLayer
-  {...layerId("interior-roads-outlines")}
-  filter={["==", ["get", "kind"], "interior_road"]}
-  paint={{
-    "line-width": lineWidth($thickRoadsForShortcuts, gj.maxShortcuts, 1),
-    "line-color": "black",
-  }}
-  minzoom={13}
-/>
+<GeoJSON data={gj} generateId>
+  <LineLayer
+    {...layerId("interior-roads-outlines")}
+    filter={["==", ["get", "kind"], "interior_road"]}
+    paint={{
+      "line-width": lineWidth($thickRoadsForShortcuts, gj.maxShortcuts, 1),
+      "line-color": "black",
+    }}
+    minzoom={13}
+  />
 
-<LineLayer
-  {...layerId("interior-roads", false)}
-  filter={["==", ["get", "kind"], "interior_road"]}
-  paint={{
-    "line-width": lineWidth($thickRoadsForShortcuts, gj.maxShortcuts, 0),
-    "line-color": roadLineColor($roadStyle, gj.maxShortcuts),
-    "line-opacity": hoverStateFilter(1.0, 0.5),
-  }}
-  layout={{
-    "line-sort-key": ["get", "shortcuts"],
-  }}
-  minzoom={13}
-  on:click={(e) =>
-    interactive && onClickLine(e.detail.features[0], e.detail.event.lngLat)}
-  manageHoverState={interactive}
-  hoverCursor={interactive ? "pointer" : undefined}
->
-  {#if interactive}
-    <slot name="line-popup" />
-  {/if}
-</LineLayer>
+  <LineLayer
+    {...layerId("interior-roads", false)}
+    filter={["==", ["get", "kind"], "interior_road"]}
+    paint={{
+      "line-width": lineWidth($thickRoadsForShortcuts, gj.maxShortcuts, 0),
+      "line-color": roadLineColor($roadStyle, gj.maxShortcuts),
+      "line-opacity": hoverStateFilter(1.0, 0.5),
+    }}
+    layout={{
+      "line-sort-key": ["get", "shortcuts"],
+    }}
+    minzoom={13}
+    on:click={(e) =>
+      interactive && onClickLine(e.detail.features[0], e.detail.event.lngLat)}
+    manageHoverState={interactive}
+    hoverCursor={interactive ? "pointer" : undefined}
+  >
+    {#if interactive}
+      <slot name="line-popup" />
+    {/if}
+  </LineLayer>
 
-<LineLayer
-  {...layerId("main-roads-outlines")}
-  filter={["==", ["get", "kind"], "main_road"]}
-  paint={{
-    "line-width": lineWidth($thickRoadsForShortcuts, gj.maxShortcuts, 6),
-    "line-color": "black",
-  }}
-  minzoom={13}
-/>
+  <LineLayer
+    {...layerId("main-roads-outlines")}
+    filter={["==", ["get", "kind"], "main_road"]}
+    paint={{
+      "line-width": lineWidth($thickRoadsForShortcuts, gj.maxShortcuts, 6),
+      "line-color": "black",
+    }}
+    minzoom={13}
+  />
 
-<LineLayer
-  {...layerId("main-roads", false)}
-  filter={["==", ["get", "kind"], "main_road"]}
-  paint={{
-    "line-width": lineWidth($thickRoadsForShortcuts, gj.maxShortcuts, 4),
-    "line-color": hoverStateFilter(
-      "gray",
-      Style.mapFeature.hover.backgroundColor,
-    ),
-    "line-opacity": hoverStateFilter(1.0, 0.5),
-  }}
-  layout={{
-    "line-sort-key": ["get", "shortcuts"],
-  }}
-  minzoom={13}
-  on:click={(e) =>
-    interactive && onClickLine(e.detail.features[0], e.detail.event.lngLat)}
-  manageHoverState={interactive}
-  hoverCursor={interactive ? "pointer" : undefined}
->
-  {#if interactive}
-    <slot name="line-popup" />
-  {/if}
-</LineLayer>
+  <LineLayer
+    {...layerId("main-roads", false)}
+    filter={["==", ["get", "kind"], "main_road"]}
+    paint={{
+      "line-width": lineWidth($thickRoadsForShortcuts, gj.maxShortcuts, 4),
+      "line-color": hoverStateFilter(
+        "gray",
+        Style.mapFeature.hover.backgroundColor,
+      ),
+      "line-opacity": hoverStateFilter(1.0, 0.5),
+    }}
+    layout={{
+      "line-sort-key": ["get", "shortcuts"],
+    }}
+    minzoom={13}
+    on:click={(e) =>
+      interactive && onClickLine(e.detail.features[0], e.detail.event.lngLat)}
+    manageHoverState={interactive}
+    hoverCursor={interactive ? "pointer" : undefined}
+  >
+    {#if interactive}
+      <slot name="line-popup" />
+    {/if}
+  </LineLayer>
+</GeoJSON>

@@ -526,6 +526,7 @@
           action.kind == "oneway" ||
           action.kind == "main-roads" ||
           (action.kind == "turn_restriction" && action.from_road_id == null)}
+        neighbourhood={gj}
         {onClickLine}
       >
         <div slot="line-popup">
